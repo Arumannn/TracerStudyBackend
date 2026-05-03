@@ -1,0 +1,20 @@
+                                                          List of databases
+        Name         |  Owner   | Encoding | Locale Provider |   Collate   |    Ctype    | Locale | ICU Rules |   Access privileges   
+---------------------+----------+----------+-----------------+-------------+-------------+--------+-----------+-----------------------
+ alchemist_prompting | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ master              | odoo     | UTF8     | libc            | C           | en_US.UTF-8 |        |           | 
+ master_db           | odoo     | UTF8     | libc            | C           | en_US.UTF-8 |        |           | 
+ msf                 | msf      | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ msf_test            | msf      | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ odoo                | odoo     | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | =Tc/odoo             +
+                     |          |          |                 |             |             |        |           | odoo=CTc/odoo
+ postgres            | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+ project_baru        | odoo     | UTF8     | libc            | C           | en_US.UTF-8 |        |           | 
+ template0           | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | =c/postgres          +
+                     |          |          |                 |             |             |        |           | postgres=CTc/postgres
+ template1           | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | =c/postgres          +
+                     |          |          |                 |             |             |        |           | postgres=CTc/postgres
+ tester_db           | odoo     | UTF8     | libc            | C           | en_US.UTF-8 |        |           | 
+ tracer_study        | postgres | UTF8     | libc            | en_US.UTF-8 | en_US.UTF-8 |        |           | 
+(12 rows)
+
