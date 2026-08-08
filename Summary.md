@@ -1,6 +1,6 @@
 # Hasil Pengujian Fungsional — Sistem Tracer Study
 
-**Update 8 Agustus 2026:** re-test khusus FR-074, FR-014, FR-040, FR-025, FR-041, FR-068 (server Cube.js OLAP sempat mati saat sesi 7 Agustus sehingga seluruh dashboard Employment/Education 500 — sudah dinyalakan ulang untuk re-test ini). FR-040/FR-041/FR-025/FR-068 sudah PASS dengan data terbaru (lihat baris masing-masing). FR-074 dan FR-014 dikonfirmasi ulang sebagai bug nyata lalu **diperbaiki dan diverifikasi lewat klik UI langsung** — detail di baris FR masing-masing dan di §K.
+**Update 8 Agustus 2026:** re-test khusus FR-074, FR-014, FR-040, FR-025, FR-041, FR-068 (server Cube.js OLAP sempat mati saat sesi 7 Agustus sehingga seluruh dashboard Employment/Education 500 — sudah dinyalakan ulang untuk re-test ini). FR-040/FR-041/FR-025/FR-068 sudah PASS dengan data terbaru (lihat baris masing-masing). FR-074 dan FR-014 dikonfirmasi ulang sebagai bug nyata lalu **diperbaiki dan diverifikasi lewat klik UI langsung** — detail di §K. Investigasi lanjutan menemukan FR-048 dan catatan tambahan FR-068 (pie kosong per tahun) adalah **gap data**, bukan bug kode — diperbaiki lewat reseed penuh (`migrate:fresh --seed` + `etl:run`) — detail di §L, termasuk temuan penting soal cache Redis/Cube.js yang perlu di-flush manual setelah reset data manual. Sesi lanjutan (dibatasi ke Overview/Employment/Education saja) menguji & memperbaiki FR-077 (PASS), FR-085 (KPI8 kehilangan highlight "★ Tertinggi", sudah diperbaiki), dan FR-084 (ditemukan 4 bug tooltip berlabel salah/dobel di 4 chart Employment/Overview, semua diperbaiki) — detail di §M. FR-025 di-re-test ulang dengan dataset baru (144 alumni) dan **kembali menunjukkan gejala awal** (28/29 baris identik) — dikonfirmasi sebagai artefak ukuran sampel, bukan regresi bug.
 
 **Tanggal uji:** 7 Agustus 2026
 **Cakupan:** tiga repositori — `tracer-study-backend` (BE), `fe-tracer-study` (FE), `tracer-study-analytics` (Cube.js) — seluruhnya pada cabang `merge-olap-oltp`.
@@ -178,7 +178,7 @@
 | FR-043 | ✅ | Pie jenis instansi menampilkan Organisasi Non-profit 14,3%, Perusahaan Swasta 71,4%, Institusi/Organisasi Multilateral 14,3%. |
 | FR-044 | ✅ | Bar horizontal per prodi dengan legenda Lokal/Wilayah, Multinasional/Internasional, Nasional/Wiraswasta berbadan hukum. |
 | FR-045 | ✅ | Dua tombol Bandingkan terpisah; `jenisInstansi` dan `tingkatInstansi` masing-masing 7 baris, 0 galat. |
-| FR-068 | ✅ **(re-test 8 Agu 2026)** | Tooltip hover pie "Distribusi Posisi Wirausaha" diuji (tahun kelulusan 2021, satu-satunya kombinasi filter dengan data terisi di pie ini pada sesi ini): "Staff : 64.6% (31 alumni)" dan "Founder : 35.4% (17 alumni)" — cocok persis dengan API. Catatan di luar cakupan uji: pie ini kosong untuk beberapa tahun kelulusan (2019/2020/2023/2024/2025 mengembalikan total 0) meski KPI Wirausaha agregat tidak nol — belum diselidiki lebih lanjut. |
+| FR-068 | ✅ **(re-test 8 Agu 2026, gap data diperbaiki)** | Tooltip hover pie "Distribusi Posisi Wirausaha" berfungsi benar: "Staff : 64.6% (31 alumni)" dll, cocok persis API. **Temuan tambahan yang diperbaiki**: pie ini sempat kosong total untuk beberapa tahun kelulusan (2019/2020/2023/2024/2025) meski KPI Wirausaha agregat tidak nol. Root cause: `fact_tracer_study` untuk tahun-tahun itu berstatus wirausaha tapi `wirausaha_sk`-nya NULL (tidak ter-link ke `dim_wirausaha`) — gap di ETL/data historis, bukan bug query (`WirausahaRepository.php` sudah benar pakai `contains` filter, bukan `equals`, sesuai catatan yang sudah ada di kode itu sendiri). **Fix:** reseed + `etl:run` penuh (sama seperti FR-048). **Diverifikasi**: semua tahun 2020–2025 sekarang punya data pie (mis. 2020: Staff 71,4%/Founder 28,6%, total 7 alumni), dikonfirmasi lewat klik UI langsung. |
 | FR-071 | ✅ | Drill-down diuji untuk ketiga kategori jenis instansi — seluruhnya terbuka bersih dengan kolom konteks "JENIS INSTANSI" (mis. "Organisasi Non-profit (14.3% · 1 alumni)" → 1 baris, "Organisasi non-profit/Lembaga Swadaya Masyarakat"). |
 
 ## D. Dashboard Analisis Capaian Lulusan — `/dashboard/education`
@@ -187,7 +187,7 @@
 |---|---|---|
 | FR-046 | ✅ | Filter Jenjang=D3 terkirim ke seluruh endpoint (`/api/dashboard/kompetensi/gap?jenjang=D3&...`) dan mengubah hasil KPI (Skor Kompetensi berubah dari Bahasa Inggris 3,0 menjadi Kerja sama tim 3,1; Mandiri/Keluarga 49,3% → 43,1%). |
 | FR-047 | ✅ | Enam kartu memakai nama kompetensi/metode: Bahasa Inggris, Kerja sama tim, Perkuliahan, Avg Persepsi, Mandiri/Keluarga, Beasiswa. |
-| FR-048 | ❌ *(belum diuji ulang 8 Agu 2026 — di luar cakupan re-test)* | Radar metode pembelajaran hanya menampilkan **6 dari 7** metode — "Magang" hilang karena f24 tercatat sebagai `Lainnya_Range` alih-alih `MetodePembelajaran` di `dim_indikator_evaluasi`. Yang tampil: Perkuliahan, Demonstrasi, Partisipasi dalam proyek riset, Praktikum, Kerja Lapangan, Diskusi. Catatan: penyebabnya sama persis dengan FR-040 (field tercatat `Lainnya_Range` di `dim_indikator_evaluasi`), dan FR-040 sudah dikonfirmasi diperbaiki di re-test 8 Agu — kemungkinan besar FR-048 ikut terpengaruh tapi ini **belum diverifikasi langsung**. |
+| FR-048 | ✅ **(diperbaiki 8 Agu 2026)** | Radar metode pembelajaran sebelumnya cuma tampil **6 dari 7** metode — bukan bug kode, tapi **gap data**: OLTP `response_answers` punya 0 baris untuk `f22` (Demonstrasi) dan `f23` (Partisipasi dalam proyek riset) meski kode seeder saat ini sudah men-generate keduanya (DB belum di-reseed ulang sejak seeder diupdate). **Fix:** `php artisan migrate:fresh --seed` lalu `php artisan etl:run --force` untuk membangun ulang OLTP & OLAP dari nol. **Diverifikasi lewat UI**: radar sekarang menampilkan ketujuh metode (Perkuliahan, Demonstrasi, Partisipasi dalam proyek riset, Magang, Praktikum, Kerja Lapangan, Diskusi), `count_responden` konsisten 144 di semua metode. |
 | FR-049 | ✅ | Tombol Bandingkan hadir; tipe `learning` merender 87 bar / 29 baris tanpa galat. |
 | FR-050 | ✅ | Pie sumber dana: Biaya Sendiri/Keluarga 49%, Beasiswa BIDIKMISI 19%, Beasiswa PPA 20%, Beasiswa Perusahaan/Swasta 10%. |
 | FR-051 | ✅ | Toggle "Antar Periode" menghasilkan stacked bar 35 segmen (7 tahun × 5 kategori). |
@@ -239,13 +239,13 @@
 
 | Kode FR | Fitur | Status | Alasan / Penjelasan |
 |---|---|---|---|
-| FR-025 | Rata-rata vs Median Masa Tunggu | ⚠️ | Kolom identik di 28 dari 29 baris. Bukan cacat kode — `percentile_cont(0.5)` sudah benar dan lintas snapshot selisihnya nyata. Jumlah alumni ber-`masa_tunggu` per prodi dalam satu snapshot terlalu kecil untuk memisahkan keduanya. |
+| FR-025 | Rata-rata vs Median Masa Tunggu | ⚠️ **(re-test 8 Agu, lihat §M)** | Kolom identik lagi di 28 dari 29 baris setelah reseed ke dataset lebih kecil (144 alumni, n=4–8/prodi). Bukan cacat kode — sudah dikonfirmasi 2× dengan dataset beda ukuran: identik saat sampel kecil, nyata beda saat sampel besar (lihat §C baris FR-025). Sample-size artifact, bukan bug. |
 | FR-029 | Pie Kesesuaian Bidang Kerja | ✅ | Merender seluruh kategori bernilai > 0 (6 kategori pada data saat ini). |
 | FR-053 | Toggle Institution-Wide Terpisah | ✅ | Dikontrol terpadu lewat Dropdown Filter Global; tombol terpisah tidak diperlukan. |
 | FR-072 | Kategori "Lainnya" Pembiayaan Kuliah | ✅ | Seluruh alumni teralokasi ke 4 kategori resmi; slice "Lainnya" tetap ada di legenda dengan nilai 0%. |
-| FR-077 | Methodology Block per KpiCard | ⏭️ | Tidak diperiksa satu per satu untuk 13 KPI pada sesi ini. |
-| FR-084 | Konsistensi tooltip hover | ⏭️ | Belum diuji sistematis. Verifikasi angka dilakukan lewat modal drill-down, bukan tooltip. |
-| FR-085 | Highlight `ReferenceArea` tahun aktif | ⚠️ | Terkonfirmasi di KPI3 (Overview, dua kotak sekaligus), KPI4 (Keterserapan), KPI5 (Masa Tunggu), KPI6 (Kesesuaian), KPI7 (Wirausaha, dua penanda saat nilai seri). KPI8 tidak diperiksa terpisah. |
+| FR-077 | Methodology Block per KpiCard | ✅ **(diuji 8 Agu 2026, lihat §M)** | Diperiksa satu per satu di Overview (3 tab), Employment (6 tab, 15 tombol), Education (3 tab) — total 21 tombol "Lihat metodologi perhitungan", semuanya ada dan berisi konten (min. 150 karakter). |
+| FR-084 | Konsistensi tooltip hover | ✅ **(diuji & 4 bug ditemukan+diperbaiki 8 Agu 2026, lihat §M)** | Diuji sistematis di bar/pie/line/radar/combo chart pada Overview, Employment, Education. Ketemu 4 bug tooltip label salah/dobel (lihat §M) — semuanya sudah diperbaiki dan diverifikasi ulang. |
+| FR-085 | Highlight `ReferenceArea` tahun aktif | ✅ | Terkonfirmasi di KPI3 (Overview, dua kotak sekaligus), KPI4 (Keterserapan), KPI5 (Masa Tunggu), KPI6 (Kesesuaian), KPI7 (Wirausaha, dua penanda saat nilai seri). KPI8 (Pendapatan Lulusan, dipakai juga di Employment) sempat ditemukan **tidak** punya highlight ini (`markMax` di-import tapi tidak dipakai) — sudah diperbaiki 8 Agu 2026, lihat §M. |
 | FR-080 | Tombol Bandingkan tersembunyi bagi Kaprodi | ✅ | Login Kaprodi lalu menelusuri seluruh 6 tab Employment, 3 tab Education, dan 3 tab Overview: 0 tombol Bandingkan ditemukan. Peran lain tetap memilikinya pada tab yang relevan. |
 | FR-081 | Search bar halaman list admin | ✅ | Kelola Staff: "Kajur Teknik Sipil" → 1 hasil tepat. Kelola Mahasiswa: pencarian lintas angkatan dengan Enter. |
 | FR-082 | Export/download Excel di luar "Unduh Data Alumni" | ✅ | Diverifikasi tiga berkas nyata: `Template_Import_Alumni.xlsx`, `Data_Alumni_<tanggal>.xlsx` (Kelola Mahasiswa), dan `Kredensial_Alumni_<tanggal>.xlsx` (Terbitkan Kredensial) — seluruhnya terunduh dan isinya diperiksa. |
@@ -257,7 +257,7 @@
 
 Sembilan temuan yang muncul pada sesi 7 Agustus, diurutkan dari yang paling menentukan keabsahan angka:
 
-1. **Gap kompetensi salah hitung (FR-040, FR-041, FR-048).** ✅ **FR-040/FR-041 diperbaiki & diverifikasi 8 Agu 2026** (lihat baris masing-masing di §C/§D) — pemetaan `grup_gap` di `dim_indikator_evaluasi` sudah dibetulkan, ketujuh kompetensi kini punya gap valid. FR-048 (metode pembelajaran "Magang" hilang, akar masalah sama) **belum diverifikasi ulang**, di luar cakupan re-test 8 Agu.
+1. **Gap kompetensi salah hitung (FR-040, FR-041, FR-048).** ✅ **Semuanya diperbaiki & diverifikasi 8 Agu 2026** (lihat baris masing-masing di §C/§D) — pemetaan `grup_gap` di `dim_indikator_evaluasi` sudah dibetulkan, ketujuh kompetensi kini punya gap valid. FR-048 ternyata gap data terpisah (OLTP tidak punya jawaban untuk 2 dari 7 metode pembelajaran) yang ikut selesai lewat reseed penuh — detail di §L.
 
 2. **Pencarian nama di drill-down Overview tidak pernah menemukan apa pun (FR-074).** ✅ **Diperbaiki & diverifikasi 8 Agu 2026** — `ResponseRateRepository.php:199` `like`→`ilike`, `useResponseRate.ts:256` hapus force-uppercase. Dikonfirmasi lewat klik UI: alumnus mixed-case "Rahayu" sekarang ketemu.
 
@@ -297,6 +297,51 @@ Dua bug dari re-test FR-074/FR-014 diperbaiki dan diverifikasi lewat klik UI lan
 - **Regresi ditemukan & diperbaiki di iterasi yang sama**: `handleReset()` (baris ~161) masih memakai `weekOptions[0]` (label) alih-alih `weekKeys[0]` (id) — akibatnya field Snapshot Minggu kosong dan tombol Terapkan nyangkut dirty (`*`) setelah klik Reset. Diperbaiki jadi `weekKeys[0]`.
 - Verifikasi: ganti Prodi → Terapkan → Reset di Employment & Education, `minggu_snapshot=1` (id) terkirim benar ke API di seluruh request, label tetap tampil benar di dropdown & badge "Snapshot aktif" setelah Reset, 0 galat konsol. Skenario asli (dua snapshot berlabel identik) tidak bisa direproduksi visual karena seed data cuma punya 1 snapshot, tapi perbaikan di source menghilangkan akar masalahnya karena pencocokan sekarang selalu lewat id unik.
 - `npx tsc --noEmit` tidak menambah error baru dari kedua perubahan frontend ini.
+
+## L. Perbaikan Data — FR-048 & FR-068 (8 Agustus 2026)
+
+Dua temuan lanjutan setelah §K, dan keduanya bukan bug kode — murni gap data hasil seeding yang tidak lengkap:
+
+**FR-048 — 2 dari 7 metode pembelajaran tidak punya jawaban di OLTP**
+- Root cause: `ResponseSeeder.php` versi saat ini sudah men-generate jawaban untuk `f21`–`f27` (7 metode), tapi database yang dites belum pernah di-reseed dengan versi seeder itu — `tracer_oltp.response_answers` punya 0 baris untuk `f22` (Demonstrasi) dan `f23` (Partisipasi dalam proyek riset), sementara 5 kode lain punya ribuan baris. Bukan masalah `dim_indikator_evaluasi` (yang sudah benar memetakan ketujuhnya ke kategori `MetodePembelajaran`) — datanya memang tidak pernah masuk.
+
+**FR-068 — pie Wirausaha kosong untuk 5 dari 6 tahun kelulusan**
+- Root cause: `fact_tracer_study` untuk tahun 2019/2020/2023/2024 (dataset lama) atau 2020/2023/2024/2025 (dataset baru) punya baris berstatus "wirausaha" tapi kolom `wirausaha_sk`-nya NULL — tidak ter-link ke `dim_wirausaha` (tabel detail jabatan/kota). Hanya sebagian tahun yang lengkap. Repository (`WirausahaRepository.php`) sendiri sudah benar — bahkan sudah ada catatan tertulis di kodenya soal bug case serupa yang pernah diperbaiki (pakai `contains` filter, bukan `equals`, untuk `status_alumni_sk`). Ini murni data historis yang tidak lengkap ter-generate, bukan query yang salah.
+
+**Fix untuk keduanya sekaligus:** reset penuh dataset uji —
+```
+php artisan migrate:fresh --seed --force
+php artisan etl:run --force
+```
+Ini menjatuhkan & membangun ulang `tracer_oltp` (OLTP) dan `public` (OLAP star schema) dari nol, lalu menjalankan pipeline ETL resmi untuk menurunkan seluruh `dim_*`/`fact_*` dari OLTP yang baru. **Efek samping yang perlu diketahui:** dataset uji berubah drastis — dari ~10.257 alumni (dataset besar sesi-sesi sebelumnya) menjadi 144 alumni (dataset seeder default), dan nama alumni sekarang Title Case (bukan ALL-CAPS) sehingga kasus case-sensitivity FR-074 makin gampang muncul secara alami.
+
+**Jebakan tambahan yang ditemukan saat verifikasi — cache Redis basi:**
+Setelah reseed + ETL, API masih mengembalikan angka lama persis (bahkan setelah restart `php artisan serve` dan `cubejs-server` berkali-kali). Ternyata `app/Traits/WithCache.php` memanggil `Cache::store('redis')` **secara eksplisit** dengan TTL 3600 detik — mengabaikan `CACHE_STORE=array` di `.env`. Redis DB 1 (`REDIS_CACHE_DB`) masih menyimpan 62 key basi dari sebelum reseed, dan cache ini **tidak ikut ter-reset oleh migrate:fresh atau restart proses manapun** karena Redis berjalan sebagai service terpisah yang persisten. Fix: `redis-cli -n 1 flushdb`. Juga ditemukan `dev_pre_aggregations` schema di Postgres (rollup cache milik Cube.js) yang perlu di-drop manual (`DROP SCHEMA dev_pre_aggregations CASCADE;`) karena tidak ikut ter-reset oleh `migrate:fresh` (skema itu dikelola Cube.js sendiri, di luar migration Laravel). **Untuk sesi uji berikutnya**: setiap kali data OLTP/OLAP direset manual (bukan lewat command `etl:run` yang normal), flush Redis DB cache dan restart Cube.js supaya tidak salah baca data basi.
+
+**Diverifikasi lewat klik UI langsung**: radar Metode Pembelajaran menampilkan 7/7 metode; pie Wirausaha tahun 2020 menampilkan 2 sector (Staff/Founder) yang sebelumnya kosong total. Fix FR-074 dan FR-014 dari §K juga di-re-test ulang di atas dataset baru ini dan tetap berfungsi normal (0 galat konsol).
+
+## M. Perbaikan Kode — FR-077, FR-084, FR-085 (8 Agustus 2026)
+
+Sesi uji lanjutan, dibatasi ke tiga dashboard utama (Overview, Employment Outcome, Educational Assessment) sesuai arahan eksplisit. `/dashboard/analytics` dan `/dashboard/kpi` dimatikan sementara dari sidebar (di-comment di `rbac.ts` — item `dashboardItems`), bukan dihapus, supaya gampang diaktifkan lagi.
+
+**FR-077 — Methodology Block per KpiCard: ✅ PASS**
+Diperiksa satu per satu: Overview (3 tab, 3 tombol), Employment (6 tab, 15 tombol), Education (3 tab, 3 tombol) — total 21 tombol "Lihat metodologi perhitungan". Semuanya ada dan berisi konten non-kosong (150–610 karakter, ada deskripsi + rumus). Tidak ada satupun yang kosong atau hilang.
+
+**FR-085 — Highlight `ReferenceArea` KPI8: ✅ diperbaiki**
+`Kpi8IncomeChart.tsx` (chart "Tren Pendapatan & % Lulusan ≥ UMP", dipakai di Employment tab "Pendapatan Lulusan" dan sebelumnya di halaman KPI Lintas Prodi) meng-import `markMax` dari `./format` tapi tidak pernah memanggilnya — akibatnya highlight kotak emas + label "★ Tertinggi" yang ada di KPI3/4/5/6/7 tidak pernah muncul di KPI8. Fix: tambahkan `data={markMax(avgData, "avg")}` ke `<ComposedChart>`, `<ReferenceArea>` untuk titik `isMax`, dan `<LabelList dataKey="isMax">` dengan teks "★ Tertinggi" — pola persis disalin dari `Kpi5WaitingTimeChart.tsx`. Diverifikasi: highlight & label muncul di bar 2022 (nilai tertinggi, 12,9jt) pada dashboard Employment, 0 galat konsol.
+
+**FR-084 — Konsistensi tooltip hover: ❌ ditemukan 4 bug, ✅ semua diperbaiki**
+Diuji sistematis (hover + baca isi tooltip) di setiap jenis chart (bar, pie, line, radar, combo) pada ketiga dashboard. Pola bug yang ditemukan berulang: `<Tooltip formatter>` pada `ComposedChart` yang punya lebih dari satu series (Bar + Line) me-hardcode label ke nama salah satu series saja, alih-alih memakai parameter `name` yang dikirim Recharts (yang sebenarnya sudah berisi label `name` dari series yang sedang di-hover). Akibatnya kedua series tampil dengan label yang sama di tooltip, bukan label masing-masing.
+
+File yang diperbaiki:
+- `Kpi1ParticipationChart.tsx` (Overview, "Respons Rate per Prodi") — formatter membandingkan `n === "responded"` padahal Recharts mengirim `name` prop ("Sudah Merespons"/"Belum Merespons"), bukan dataKey mentah ("responded"/"notResponded") — perbandingan selalu `false`, tooltip selalu bilang "Belum Merespons" untuk kedua segmen bar stacked. Fix: pakai `n` langsung.
+- `Kpi4AbsorptionChart.tsx` (Employment, "Keterserapan Lulusan") — formatter hardcode label `"Keterserapan"` untuk Bar dan Line ("Tren") sekaligus → tooltip menampilkan "Keterserapan" dua kali dengan nilai sama. Fix: pakai `n`.
+- `Kpi5WaitingTimeChart.tsx` (Employment, "Masa Tunggu Kerja") — sama persis, formatter hardcode `` `≤ ${batasLabel} bulan` `` untuk Bar dan Line "Tren" sekaligus. Fix: pakai `name`.
+- `Kpi6FieldRelevanceChart.tsx` (Employment, "Kesesuaian Bidang") — formatter hardcode `"Kesesuaian"`, dan `<Line>`-nya bahkan tidak punya prop `name` sama sekali (fallback ke dataKey mentah "value"). Fix: tambah `name="Tren"` ke `<Line>`, formatter pakai `n`.
+
+Chart yang **diperiksa dan sudah benar** dari awal (tidak diubah): `Kpi3ParticipationTrendChart.tsx` (Overview, Tren Partisipasi — formatter sudah membandingkan `name` dengan benar), `Kpi7EntrepreneurshipChart.tsx` (Wirausaha), `Kpi8IncomeChart.tsx` (Pendapatan — sudah pakai `n` dengan benar), pie Kesesuaian Bidang (sempat terlihat kosong saat tes tapi ternyata false-positive dari selector Playwright yang salah sasaran, bukan bug aplikasi), radar Gap Kompetensi & Metode Pembelajaran (Education), pie Sumber Pembiayaan Kuliah (Education).
+
+Semua fix diverifikasi lewat hover langsung di browser sebelum & sesudah — label sekarang berbeda dan benar untuk tiap series, 0 galat konsol di seluruh pengujian. `npx tsc --noEmit` bersih untuk semua file yang diubah.
 
 ### Perubahan data yang saya buat selama pengujian
 
