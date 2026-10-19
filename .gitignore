@@ -1,0 +1,18 @@
+# Keluaran alat bantu (bukan source code)
+.playwright-mcp/
+graphify-out/
+
+# Tangkapan layar lepas di root
+/*.png
+
+# Database contoh bawaan Metabase
+metabase/plugins/*.sqlite
+
+# Dokumen (laporan, analisis, test case) -- bukan source code
+/*.md
+!/README.md
+/*.docx
+/*.pdf
+/*.xlsx
+/Test Case/
+/postman/
